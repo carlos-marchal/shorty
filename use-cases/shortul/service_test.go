@@ -8,7 +8,10 @@ import (
 )
 
 func TestStoresAndRetrievesURLs(t *testing.T) {
-	service := Service{newfakeRepository()}
+	service, err := NewService(newfakeRepository())
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
 	stored, err := service.ShortenURL("https://example.com")
 	if err != nil {
 		t.Fatalf("did not expect error while storing: %v", err)
@@ -23,7 +26,10 @@ func TestStoresAndRetrievesURLs(t *testing.T) {
 }
 
 func TestIgnoresExpiredURLs(t *testing.T) {
-	service := Service{newfakeRepository()}
+	service, err := NewService(newfakeRepository())
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
 	service.repository.SaveURL(&entities.ShortURL{
 		Target:  "https://example.com",
 		ShortID: "id",
@@ -36,7 +42,10 @@ func TestIgnoresExpiredURLs(t *testing.T) {
 }
 
 func TestErrorsOnRepeatedEntry(t *testing.T) {
-	service := Service{newfakeRepository()}
+	service, err := NewService(newfakeRepository())
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
 	first, err := service.ShortenURL("https://example.com")
 	if err != nil {
 		t.Fatalf("did not expect error %v", err)
@@ -44,5 +53,16 @@ func TestErrorsOnRepeatedEntry(t *testing.T) {
 	second, err := service.ShortenURL("https://example.com")
 	if err == nil {
 		t.Fatalf("expected error on repeated entries, got entries %v and %v", first, second)
+	}
+}
+
+func TestFailsOnNonexistantID(t *testing.T) {
+	service, err := NewService(newfakeRepository())
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	retrieved, err := service.ResolveURL("does not exist")
+	if err == nil {
+		t.Fatalf("expected error on nonexistant entry, got %v", retrieved)
 	}
 }
