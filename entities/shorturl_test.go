@@ -15,10 +15,10 @@ func TestAssignsValues(t *testing.T) {
 	target, shortID := "https://example.com", "id"
 	url, err := NewShortURL(target, shortID)
 	if err != nil {
-		t.Errorf("unexpected error %+v", err)
+		t.Fatalf("unexpected error %+v", err)
 	}
 	if url.Target != target || url.ShortID != shortID {
-		t.Errorf("failed sanity test, values not assigned correctly: %+v", url)
+		t.Fatalf("failed sanity test, values not assigned correctly: %+v", url)
 	}
 }
 
@@ -33,7 +33,7 @@ func TestAcceptsOnlyValidHTTPURLs(t *testing.T) {
 	for _, url := range invalidURLs {
 		_, err := NewShortURL(url, "abc")
 		if err == nil {
-			t.Errorf("expected error for non http(s) url %v", url)
+			t.Fatalf("expected error for non http(s) url %v", url)
 		}
 	}
 	validURLs := []string{
@@ -43,10 +43,10 @@ func TestAcceptsOnlyValidHTTPURLs(t *testing.T) {
 	for _, url := range validURLs {
 		value, err := NewShortURL(url, "abc")
 		if value == nil {
-			t.Errorf("expected non nil return for http(s) url %v", url)
+			t.Fatalf("expected non nil return for http(s) url %v", url)
 		}
 		if err != nil {
-			t.Errorf("did not expect error %+v for http(s) url %v", err, url)
+			t.Fatalf("did not expect error %+v for http(s) url %v", err, url)
 		}
 	}
 }
@@ -67,9 +67,9 @@ func TestAcceptsOnlyAlphanumericIDs(t *testing.T) {
 	for _, test := range tests {
 		_, err := NewShortURL("https://example.com", test.id)
 		if err == nil && !test.valid {
-			t.Errorf("accepted id %v when supposed to error", test.id)
+			t.Fatalf("accepted id %v when supposed to error", test.id)
 		} else if err != nil && test.valid {
-			t.Errorf("threw error %v for id %v when supposed to accept", err, test.id)
+			t.Fatalf("threw error %v for id %v when supposed to accept", err, test.id)
 
 		}
 	}
@@ -78,11 +78,11 @@ func TestAcceptsOnlyAlphanumericIDs(t *testing.T) {
 func TestShortenedURLLastsOneWeek(t *testing.T) {
 	url, err := NewShortURL("https://example.com", "abc")
 	if err != nil {
-		t.Errorf("encountered error %v", err)
+		t.Fatalf("encountered error %v", err)
 	}
 	nextWeek := time.Now().Add(time.Hour * 24 * 7)
 	diff := url.Expires.Sub(nextWeek)
 	if diff < -time.Second || diff > time.Second {
-		t.Errorf("incorrect expiration date set at %v", url.Expires)
+		t.Fatalf("incorrect expiration date set at %v", url.Expires)
 	}
 }
