@@ -23,14 +23,6 @@ func NewShortURL(target string, shortID string) (*ShortURL, error) {
 	if parsedTarget.Scheme != "http" && parsedTarget.Scheme != "https" {
 		return nil, fmt.Errorf("scheme must be either http or https")
 	}
-	parsedShortened, err := url.Parse(shortID)
-	if err != nil {
-		return nil, err
-	}
-	if parsedShortened.IsAbs() {
-		return nil, fmt.Errorf("shortenedpath must be a relative path")
-
-	}
 	if !idRegexp.MatchString(shortID) {
 		return nil, fmt.Errorf("shortened id %v is not alphanumeric", shortID)
 	}
