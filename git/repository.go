@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/carlos-marchal/shorty/entities"
-	"github.com/carlos-marchal/shorty/usecases/shorturl"
 	gossh "golang.org/x/crypto/ssh"
 
 	"github.com/go-git/go-billy/v5"
@@ -144,13 +143,15 @@ func (repository *Repository) writeRemote(commitMessage string) error {
 	if err != nil {
 		return fmt.Errorf("error adding file to repo: %w", err)
 	}
-	_, err = repository.worktree.Commit(commitMessage, &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  repository.config.CommitName,
-			Email: repository.config.CommitEmail,
-			When:  time.Now(),
-		},
-	})
+	_, err = repository.worktree.Commit(
+		fmt.Sprintf("BOT: %v", commitMessage),
+		&git.CommitOptions{
+			Author: &object.Signature{
+				Name:  repository.config.CommitName,
+				Email: repository.config.CommitEmail,
+				When:  time.Now(),
+			},
+		})
 	if err != nil {
 		return fmt.Errorf("error commiting file to repo: %w", err)
 	}
@@ -255,5 +256,3 @@ func (repository *Repository) SaveURL(url *entities.ShortURL) error {
 	}
 	return nil
 }
-
-var _ shorturl.Repository = (*Repository)(nil)

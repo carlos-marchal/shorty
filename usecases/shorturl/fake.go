@@ -46,5 +46,3 @@ func (repository *fakeRepository) GenerateShortID() (string, error) {
 	repository.n++
 	return fmt.Sprintf("%x", repository.n), nil
 }
-
-var _ Repository = (*fakeRepository)(nil)

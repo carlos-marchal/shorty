@@ -48,5 +48,3 @@ func (service *Service) ResolveURL(shortID string) (*entities.ShortURL, error) {
 	}
 	return url, nil
 }
-
-var _ UseCase = (*Service)(nil)
