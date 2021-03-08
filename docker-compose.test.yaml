@@ -10,3 +10,7 @@ services:
     build: ./git/test
     ports:
       - "22:22"
+networks:
+  default:
+    driver: bridge
+    internal: true
