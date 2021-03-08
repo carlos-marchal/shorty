@@ -10,6 +10,7 @@ import (
 
 	"github.com/carlos-marchal/shorty/entities"
 	"github.com/carlos-marchal/shorty/usecases/shorturl"
+	gossh "golang.org/x/crypto/ssh"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
@@ -162,6 +163,7 @@ func (repository *Repository) writeRemote(commitMessage string) error {
 
 func NewRepository(config *Config) (*Repository, error) {
 	keys, err := ssh.NewPublicKeys("git", []byte(config.PrivateKey), "")
+	keys.HostKeyCallback = gossh.InsecureIgnoreHostKey()
 	if err != nil {
 		return nil, fmt.Errorf("error creating key: %w", err)
 	}
