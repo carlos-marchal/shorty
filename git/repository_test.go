@@ -19,17 +19,15 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 	emptyRepoConfig = &Config{
-		PrivateKey: string(key),
-		RepoURL:    "git@gitserver:/home/git/empty.git",
-		// RepoURL:     "ssh://git@localhost:2222/home/git/empty.git",
+		PrivateKey:  string(key),
+		RepoURL:     "ssh://git@gitserver/home/git/empty.git",
 		URLFilePath: "urls.json",
 		CommitName:  "Shorty Bot Test",
 		CommitEmail: "test@example.com",
 	}
 	exampleRepoConfig = new(Config)
 	*exampleRepoConfig = *emptyRepoConfig
-	exampleRepoConfig.RepoURL = "git@gitserver:/home/git/example.git"
-	// exampleRepoConfig.RepoURL = "ssh://git@localhost:2222/home/git/example.git"
+	exampleRepoConfig.RepoURL = "ssh://git@gitserver/home/git/example.git"
 	os.Exit(m.Run())
 }
 
