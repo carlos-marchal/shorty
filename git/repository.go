@@ -15,13 +15,14 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
 )
 
 type Config struct {
 	RepoURL     string
-	PublicKey   string
+	PrivateKey  string
 	URLFilePath string
 	CommitName  string
 	CommitEmail string
@@ -62,6 +63,8 @@ func (repository *Repository) readRemote() error {
 		}
 		return repository.readRemoteNoFetch()
 	case git.NoErrAlreadyUpToDate:
+		return nil
+	case transport.ErrEmptyRemoteRepository:
 		return nil
 	default:
 		return fmt.Errorf("error fetching remote: %w", err)
@@ -158,7 +161,7 @@ func (repository *Repository) writeRemote(commitMessage string) error {
 }
 
 func NewRepository(config *Config) (*Repository, error) {
-	keys, err := ssh.NewPublicKeys("git", []byte(config.PublicKey), "")
+	keys, err := ssh.NewPublicKeys("git", []byte(config.PrivateKey), "")
 	if err != nil {
 		return nil, fmt.Errorf("error creating key: %w", err)
 	}
@@ -169,7 +172,7 @@ func NewRepository(config *Config) (*Repository, error) {
 		Auth:  keys,
 		Depth: 1,
 	})
-	if err != nil {
+	if err != nil && err != transport.ErrEmptyRemoteRepository {
 		return nil, fmt.Errorf("error cloning repo: %w", err)
 	}
 	worktree, err := gitRepo.Worktree()
