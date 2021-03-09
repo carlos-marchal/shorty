@@ -43,7 +43,8 @@ To run all the test suites using Docker Compose, run the following command in
 the repository root:
 
 ```
-docker-compose -f docker-compose.test.yaml up --build --exit-code-from test
+docker-compose -f docker-compose.test.yaml up --build --exit-code-from test \
+&& docker-compose -f docker-compose.test.yaml down
 ```
 
 To build the server binary you can use:
