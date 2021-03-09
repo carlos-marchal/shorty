@@ -34,7 +34,7 @@ response will be a temporary redirect, which in browsers should lead you
 seamlessly to the target page.
 
 ```bash
-curl [the url you got from previous response] -i
+curl [the url you got from previous response] --include
 ```
 
 ## Testing, building and running
