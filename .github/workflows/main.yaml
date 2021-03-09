@@ -1,11 +1,11 @@
-name: Actions
+name: Test & Deploy
 on: push
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT }}
   SERVICE: shorty
   REGION: europe-west1
 jobs:
-  
+
   test:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'BOT:')"

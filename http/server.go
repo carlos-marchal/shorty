@@ -52,7 +52,7 @@ func Start(urls shorturl.UseCase, config *Config) error {
 			Shortened: fmt.Sprintf("https://%v/%v", config.Hostname, url.ShortID),
 			Expires:   url.Expires,
 		}
-		responseBody, err := json.Marshal(response)
+		responseBody, err := json.MarshalIndent(response, "", "  ")
 		if err != nil {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
