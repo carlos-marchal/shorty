@@ -17,7 +17,7 @@ var defaultEnv = map[string]string{
 	"COMMIT_NAME":      "Shorty Bot",
 	"COMMIT_EMAIL":     "shorty.bot@carlos.marchal.page",
 	"PORT":             "8080",
-	"HOSTNAME":         "localhost",
+	"ORIGIN":           "http://localhost:8080",
 }
 
 func main() {
@@ -52,8 +52,8 @@ func main() {
 		log.Fatalf("Error parsing port number: %v", env["PORT"])
 	}
 	err = http.Start(service, &http.Config{
-		Port:     uint(port),
-		Hostname: env["HOSTNAME"],
+		Port:   uint(port),
+		Origin: env["ORIGIN"],
 	})
 	log.Fatalf("Error initializing use case handler: %v", err)
 }

@@ -68,5 +68,5 @@ When running the server, it must be configured with environment variables:
 | COMMIT_NAME         | no       | Shorty Bot                     | The commit author name of the bot                              |
 | COMMIT_EMAIL        | no       | shorty.bot@carlos.marchal.page | The commit author email of the bot                             |
 | PORT                | no       | 8080                           | The port on which to listen                                    |
-| HOSTNAME            | no       | localhost                      | The hostname to use in responses                               |
+| ORIGIN              | no       | http://localhost:8080          | The hostname to use in responses                               |
 

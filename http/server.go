@@ -21,8 +21,8 @@ type responseBody struct {
 }
 
 type Config struct {
-	Port     uint
-	Hostname string
+	Port   uint
+	Origin string
 }
 
 func Start(urls shorturl.UseCase, config *Config) error {
@@ -49,7 +49,7 @@ func Start(urls shorturl.UseCase, config *Config) error {
 		}
 		response := &responseBody{
 			Target:    url.Target,
-			Shortened: fmt.Sprintf("https://%v/%v", config.Hostname, url.ShortID),
+			Shortened: fmt.Sprintf("%v/%v", config.Origin, url.ShortID),
 			Expires:   url.Expires,
 		}
 		responseBody, err := json.MarshalIndent(response, "", "  ")
