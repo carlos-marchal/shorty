@@ -3,7 +3,6 @@ package http
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"time"
@@ -39,14 +38,11 @@ func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 			http.Error(w, fmt.Sprintf("method %v not supported", r.Method), http.StatusMethodNotAllowed)
 			return
 		}
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
-		}
 		parsed := new(requestBody)
-		err = json.Unmarshal(body, parsed)
-		if err != nil || parsed.URL == nil {
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(parsed)
+		if err != nil || parsed.URL == nil || decoder.More() {
 			http.Error(w, "body must be a json object with a single url string field", http.StatusBadRequest)
 			return
 		}

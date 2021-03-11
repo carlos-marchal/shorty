@@ -68,6 +68,7 @@ func TestShortenRequestHasProperFormat(t *testing.T) {
 		{contentType: "application/json", content: "{ bad json ]", expectOK: false},
 		{contentType: "application/json", content: `{"unexpected-field": "baad"}`, expectOK: false},
 		{contentType: "application/json", content: `{"url": "https://example.com"}`, expectOK: true},
+		{contentType: "application/json", content: `{"url": "https://example.com", "unexpected-field": "baad"}`, expectOK: false},
 	}
 	for _, test := range tests {
 		request := httptest.NewRequest("POST", "/shorten", strings.NewReader(test.content))
