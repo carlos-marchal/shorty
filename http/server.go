@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/carlos-marchal/shorty/entities"
 	"github.com/carlos-marchal/shorty/usecases/shorturl"
 )
 
@@ -38,6 +39,10 @@ func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 			http.Error(w, fmt.Sprintf("method %v not supported", r.Method), http.StatusMethodNotAllowed)
 			return
 		}
+		if r.Header.Get("content-type") != "application/json" {
+			http.Error(w, "body must be a json object with a single url string field", http.StatusBadRequest)
+			return
+		}
 		parsed := new(requestBody)
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
@@ -48,8 +53,13 @@ func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 		}
 		log.Printf("%+v\n", parsed)
 		url, err := urls.ShortenURL(*parsed.URL)
-		if err != nil {
-			log.Printf("%+v\n", err)
+		switch err.(type) {
+		case *entities.ErrInvalidURL:
+			http.Error(w, "URL must be a valid HTTP or HTTPS URL", http.StatusBadRequest)
+			return
+		case nil:
+			break
+		default:
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -63,6 +73,7 @@ func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
+		w.Header().Add("content-type", "application/json")
 		w.Write(responseBody)
 	})
 

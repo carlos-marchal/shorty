@@ -1,27 +1,26 @@
 package http
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/carlos-marchal/shorty/entities"
 )
 
-type fakeUserService struct {
-	CallsToShorten []string
-	CallsToResolve []string
-}
+type fakeUserService struct{}
+
+var testResponse = &entities.ShortURL{"http://example.com", "1", time.Now()}
 
 func (service *fakeUserService) ShortenURL(target string) (*entities.ShortURL, error) {
-	service.CallsToShorten = append(service.CallsToShorten, target)
-	return entities.NewShortURL(target, "fakeid")
+	return testResponse, nil
 }
 
 func (service *fakeUserService) ResolveURL(shortID string) (*entities.ShortURL, error) {
-	service.CallsToResolve = append(service.CallsToResolve, shortID)
-	return entities.NewShortURL("https://fake.com", shortID)
+	return testResponse, nil
 }
 
 var testHandler = buildHandler(&fakeUserService{}, &Config{Port: 8000, Origin: "https://test"})
@@ -69,6 +68,7 @@ func TestShortenRequestHasProperFormat(t *testing.T) {
 		{contentType: "application/json", content: `{"unexpected-field": "baad"}`, expectOK: false},
 		{contentType: "application/json", content: `{"url": "https://example.com"}`, expectOK: true},
 		{contentType: "application/json", content: `{"url": "https://example.com", "unexpected-field": "baad"}`, expectOK: false},
+		{contentType: "text/plain", content: `{"url": "https://example.com"}`, expectOK: false},
 	}
 	for _, test := range tests {
 		request := httptest.NewRequest("POST", "/shorten", strings.NewReader(test.content))
@@ -91,5 +91,22 @@ func TestShortenRequestHasProperFormat(t *testing.T) {
 }
 
 func TestShortenResponseHasProperFormat(t *testing.T) {
-
+	request := httptest.NewRequest("POST", "/shorten", strings.NewReader(`{"url": "https://example.com"}`))
+	request.Header.Set("content-type", "application/json")
+	w := httptest.NewRecorder()
+	testHandler.ServeHTTP(w, request)
+	response := w.Result()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("Expected ok status but got %v", response.StatusCode)
+	}
+	if mime := response.Header.Get("content-type"); mime != "application/json" {
+		t.Fatalf("Expected json content type but got %v", mime)
+	}
+	parsed := new(responseBody)
+	decoder := json.NewDecoder(response.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(parsed)
+	if err != nil || decoder.More() {
+		t.Fatalf("Expected response to match json schema")
+	}
 }
