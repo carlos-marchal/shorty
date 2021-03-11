@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 )
 
 type requestBody struct {
-	URL string `json:"url"`
+	URL *string `json:"url"`
 }
 
 type responseBody struct {
@@ -26,7 +27,14 @@ type Config struct {
 }
 
 func Start(urls shorturl.UseCase, config *Config) error {
-	http.HandleFunc("/shorten", func(w http.ResponseWriter, r *http.Request) {
+	handler := buildHandler(urls, config)
+	return http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", config.Port), handler)
+}
+
+func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/shorten", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			http.Error(w, fmt.Sprintf("method %v not supported", r.Method), http.StatusMethodNotAllowed)
 			return
@@ -38,12 +46,14 @@ func Start(urls shorturl.UseCase, config *Config) error {
 		}
 		parsed := new(requestBody)
 		err = json.Unmarshal(body, parsed)
-		if err != nil {
+		if err != nil || parsed.URL == nil {
 			http.Error(w, "body must be a json object with a single url string field", http.StatusBadRequest)
 			return
 		}
-		url, err := urls.ShortenURL(parsed.URL)
+		log.Printf("%+v\n", parsed)
+		url, err := urls.ShortenURL(*parsed.URL)
 		if err != nil {
+			log.Printf("%+v\n", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -60,7 +70,7 @@ func Start(urls shorturl.UseCase, config *Config) error {
 		w.Write(responseBody)
 	})
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			http.Error(w, fmt.Sprintf("method %v not supported", r.Method), http.StatusMethodNotAllowed)
 			return
@@ -78,5 +88,5 @@ func Start(urls shorturl.UseCase, config *Config) error {
 		http.Redirect(w, r, url.Target, http.StatusTemporaryRedirect)
 	})
 
-	return http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", config.Port), nil)
+	return mux
 }

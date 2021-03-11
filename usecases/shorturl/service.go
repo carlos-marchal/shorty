@@ -1,7 +1,6 @@
 package shorturl
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/carlos-marchal/shorty/entities"
@@ -12,28 +11,30 @@ type Service struct {
 }
 
 func NewService(repository Repository) (*Service, error) {
-	if repository == nil {
-		return nil, fmt.Errorf("must pass a non nil repository")
-	}
 	return &Service{repository}, nil
 }
 
 func (service *Service) ShortenURL(target string) (*entities.ShortURL, error) {
-	_, err := service.repository.GetByURL(target)
-	if err == nil {
-		return nil, fmt.Errorf("url %v has already been shortened", target)
+	url, err := service.repository.GetByURL(target)
+	switch err.(type) {
+	case nil:
+		return url, err
+	case *ErrRepoNotFound:
+		break
+	default:
+		return nil, err
 	}
 	id, err := service.repository.GenerateShortID()
 	if err != nil {
-		return nil, fmt.Errorf("error generating id: %v", err)
+		return nil, err
 	}
 	new, err := entities.NewShortURL(target, id)
 	if err != nil {
-		return nil, fmt.Errorf("error constructing URL: %v", err)
+		return nil, err
 	}
 	err = service.repository.SaveURL(new)
 	if err != nil {
-		return nil, fmt.Errorf("error saving URL: %v", err)
+		return nil, err
 	}
 	return new, nil
 }
@@ -44,7 +45,7 @@ func (service *Service) ResolveURL(shortID string) (*entities.ShortURL, error) {
 		return nil, err
 	}
 	if url.Expires.Before(time.Now()) {
-		return nil, fmt.Errorf("entry for %v is expired", shortID)
+		return nil, &ErrURLExpired{url.Target, url.Expires}
 	}
 	return url, nil
 }

@@ -23,7 +23,7 @@ func newfakeRepository() *fakeRepository {
 func (repository *fakeRepository) GetByURL(target string) (*entities.ShortURL, error) {
 	url := repository.byURL[target]
 	if url == nil {
-		return nil, fmt.Errorf("no url with target %v in repo", url)
+		return nil, &ErrRepoNotFound{target}
 	}
 	return url, nil
 }
@@ -31,7 +31,7 @@ func (repository *fakeRepository) GetByURL(target string) (*entities.ShortURL, e
 func (repository *fakeRepository) GetByID(shortID string) (*entities.ShortURL, error) {
 	url := repository.byID[shortID]
 	if url == nil {
-		return nil, fmt.Errorf("no url with ID %v in repo", url)
+		return nil, &ErrRepoNotFound{shortID}
 	}
 	return url, nil
 }

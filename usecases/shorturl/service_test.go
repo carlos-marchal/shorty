@@ -36,12 +36,12 @@ func TestIgnoresExpiredURLs(t *testing.T) {
 		Expires: time.Now().Add(-time.Second),
 	})
 	retrieved, err := service.ResolveURL("id")
-	if err == nil {
-		t.Fatalf("expected error on retrieving expired url, got %v", retrieved)
+	if _, ok := err.(*ErrURLExpired); !ok {
+		t.Fatalf("expected expired error on retrieving expired url, got %v", retrieved)
 	}
 }
 
-func TestErrorsOnRepeatedEntry(t *testing.T) {
+func TestReturnsExistantOnRepeatedEntry(t *testing.T) {
 	service, err := NewService(newfakeRepository())
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -51,8 +51,11 @@ func TestErrorsOnRepeatedEntry(t *testing.T) {
 		t.Fatalf("did not expect error %v", err)
 	}
 	second, err := service.ShortenURL("https://example.com")
-	if err == nil {
-		t.Fatalf("expected error on repeated entries, got entries %v and %v", first, second)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if *first != *second {
+		t.Fatalf("got nonmatching entries %v and %v", first, second)
 	}
 }
 

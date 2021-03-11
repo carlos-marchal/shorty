@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/carlos-marchal/shorty/entities"
+	"github.com/carlos-marchal/shorty/usecases/shorturl"
 	gossh "golang.org/x/crypto/ssh"
 
 	"github.com/go-git/go-billy/v5"
@@ -59,7 +60,7 @@ func (repository *Repository) readRemote() error {
 			Depth:      1,
 		})
 		if err != nil {
-			return fmt.Errorf("error pulling remote: %w", err)
+			return &shorturl.ErrRepoInternal{}
 		}
 		return repository.readRemoteNoFetch()
 	case git.NoErrAlreadyUpToDate:
@@ -67,7 +68,7 @@ func (repository *Repository) readRemote() error {
 	case transport.ErrEmptyRemoteRepository:
 		return nil
 	default:
-		return fmt.Errorf("error fetching remote: %w", err)
+		return &shorturl.ErrRepoInternal{}
 	}
 }
 
@@ -78,21 +79,21 @@ func (repository *Repository) readRemoteNoFetch() error {
 			repository.urls = []*entities.ShortURL{}
 			repository.serial = 0
 		} else {
-			return fmt.Errorf("error opening url file: %w", err)
+			return &shorturl.ErrRepoInternal{}
 		}
 	} else {
 		rawContent, err := io.ReadAll(urlFileContent)
 		if err != nil {
-			return fmt.Errorf("error reading url file: %w", err)
+			return &shorturl.ErrRepoInternal{}
 		}
 		err = urlFileContent.Close()
 		if err != nil {
-			return fmt.Errorf("error closing url file: %w", err)
+			return &shorturl.ErrRepoInternal{}
 		}
 		urlFile := new(urlFileType)
 		err = json.Unmarshal(rawContent, urlFile)
 		if err != nil {
-			return fmt.Errorf("error deserializing url file: %w", err)
+			return &shorturl.ErrRepoInternal{}
 		}
 		repository.urls = urlFile.URLs
 		repository.serial = urlFile.Serial
@@ -112,10 +113,10 @@ func (repository *Repository) writeRemote(commitMessage string) error {
 		if err.Error() == "file does not exist" {
 			file, err = repository.fs.Create(repository.config.URLFilePath)
 			if err != nil {
-				return fmt.Errorf("error creating url file: %w", err)
+				return &shorturl.ErrRepoInternal{}
 			}
 		} else {
-			return fmt.Errorf("error opening url file: %w", err)
+			return &shorturl.ErrRepoInternal{}
 		}
 	}
 	for i := 0; i < len(repository.urls); i++ {
@@ -129,19 +130,19 @@ func (repository *Repository) writeRemote(commitMessage string) error {
 	urlFile := &urlFileType{repository.urls, repository.serial}
 	fileContents, err := json.MarshalIndent(urlFile, "", "  ")
 	if err != nil {
-		return fmt.Errorf("error serializing url file: %w", err)
+		return &shorturl.ErrRepoInternal{}
 	}
 	_, err = file.Write(fileContents)
 	if err != nil {
-		return fmt.Errorf("error writing url file: %w", err)
+		return &shorturl.ErrRepoInternal{}
 	}
 	err = file.Close()
 	if err != nil {
-		return fmt.Errorf("error closing file: %w", err)
+		return &shorturl.ErrRepoInternal{}
 	}
 	_, err = repository.worktree.Add(repository.config.URLFilePath)
 	if err != nil {
-		return fmt.Errorf("error adding file to repo: %w", err)
+		return &shorturl.ErrRepoInternal{}
 	}
 	_, err = repository.worktree.Commit(
 		fmt.Sprintf("BOT: %v", commitMessage),
@@ -153,11 +154,11 @@ func (repository *Repository) writeRemote(commitMessage string) error {
 			},
 		})
 	if err != nil {
-		return fmt.Errorf("error commiting file to repo: %w", err)
+		return &shorturl.ErrRepoInternal{}
 	}
 	err = repository.repository.Push(&git.PushOptions{Auth: repository.keys, RemoteName: "origin"})
 	if err != nil {
-		return fmt.Errorf("error pushing file to repo: %w", err)
+		return &shorturl.ErrRepoInternal{}
 	}
 	return nil
 }
@@ -166,7 +167,7 @@ func NewRepository(config *Config) (*Repository, error) {
 	keys, err := ssh.NewPublicKeys("git", []byte(config.PrivateKey), "")
 	keys.HostKeyCallback = gossh.InsecureIgnoreHostKey()
 	if err != nil {
-		return nil, fmt.Errorf("error creating key: %w", err)
+		return nil, &shorturl.ErrRepoInternal{}
 	}
 	fs := memfs.New()
 	storer := memory.NewStorage()
@@ -176,11 +177,11 @@ func NewRepository(config *Config) (*Repository, error) {
 		Depth: 1,
 	})
 	if err != nil && err != transport.ErrEmptyRemoteRepository {
-		return nil, fmt.Errorf("error cloning repo: %w", err)
+		return nil, &shorturl.ErrRepoInternal{}
 	}
 	worktree, err := gitRepo.Worktree()
 	if err != nil {
-		return nil, fmt.Errorf("error getting worktree: %w", err)
+		return nil, &shorturl.ErrRepoInternal{}
 	}
 	repository := &Repository{
 		config:      config,
@@ -207,7 +208,7 @@ func (repository *Repository) GetByURL(target string) (*entities.ShortURL, error
 	}
 	url := repository.urlByTarget[target]
 	if url == nil {
-		return nil, fmt.Errorf("no url with target %v in repo", target)
+		return nil, &shorturl.ErrRepoNotFound{target}
 	}
 	return url, nil
 }
@@ -219,7 +220,7 @@ func (repository *Repository) GetByID(shortID string) (*entities.ShortURL, error
 	}
 	url := repository.urlByID[shortID]
 	if url == nil {
-		return nil, fmt.Errorf("no url with short id %v in repo", shortID)
+		return nil, &shorturl.ErrRepoNotFound{shortID}
 	}
 	return url, nil
 }
