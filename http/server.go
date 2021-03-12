@@ -65,7 +65,7 @@ func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 		}
 		response := &responseBody{
 			Target:    url.Target,
-			Shortened: fmt.Sprintf("%v/%v", config.Origin, url.ShortID),
+			Shortened: buildURL(config.Origin, config.Port, url.ShortID),
 			Expires:   url.Expires,
 		}
 		responseBody, err := json.MarshalIndent(response, "", "  ")
@@ -92,8 +92,18 @@ func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 			http.Error(w, "url not found", http.StatusNotFound)
 			return
 		}
-		http.Redirect(w, r, url.Target, http.StatusTemporaryRedirect)
+		shortened := buildURL(config.Origin, config.Port, url.ShortID)
+		http.Redirect(w, r, shortened, http.StatusTemporaryRedirect)
 	})
 
 	return mux
+}
+
+func buildURL(origin string, port uint, path string) string {
+	canonicalHTTP := origin[0:7] == "http://" && port == 80
+	canonicalHTTPS := origin[0:8] == "https://" && port == 443
+	if canonicalHTTP || canonicalHTTPS {
+		return fmt.Sprintf("%v/%v", origin, path)
+	}
+	return fmt.Sprintf("%v:%v/%v", origin, port, path)
 }
