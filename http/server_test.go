@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -49,7 +50,7 @@ func TestShortenAcceptsOnlyPOST(t *testing.T) {
 		request := httptest.NewRequest(test.method, "/shorten", strings.NewReader(`{"url": "https://example.com"}`))
 		request.Header.Set("content-type", "application/json")
 		w := httptest.NewRecorder()
-		testHandler := buildHandler(&fakeUserService{}, &Config{Port: 8000, Origin: "https://test"})
+		testHandler := buildHandler(&fakeUserService{}, &Config{Origin: "https://test"})
 		testHandler.ServeHTTP(w, request)
 		var ok bool
 		switch status := w.Result().StatusCode; status {
@@ -89,7 +90,7 @@ func TestShortenRequestHasProperFormat(t *testing.T) {
 		request := httptest.NewRequest("POST", "/shorten", strings.NewReader(test.content))
 		request.Header.Set("content-type", test.contentType)
 		w := httptest.NewRecorder()
-		testHandler := buildHandler(&test, &Config{Port: 8000, Origin: "https://test"})
+		testHandler := buildHandler(&test, &Config{Origin: "https://test"})
 		testHandler.ServeHTTP(w, request)
 		var ok bool
 		switch status := w.Result().StatusCode; status {
@@ -110,7 +111,7 @@ func TestShortenResponseHasProperFormat(t *testing.T) {
 	request := httptest.NewRequest("POST", "/shorten", strings.NewReader(`{"url": "https://example.com"}`))
 	request.Header.Set("content-type", "application/json")
 	w := httptest.NewRecorder()
-	testHandler := buildHandler(&fakeUserService{}, &Config{Port: 8000, Origin: "https://test"})
+	testHandler := buildHandler(&fakeUserService{}, &Config{Origin: "https://test"})
 	testHandler.ServeHTTP(w, request)
 	response := w.Result()
 	if response.StatusCode != http.StatusOK {
@@ -143,7 +144,7 @@ func TestResolveAcceptsOnlyGet(t *testing.T) {
 	for _, test := range tests {
 		request := httptest.NewRequest(test.method, "/id", nil)
 		w := httptest.NewRecorder()
-		testHandler := buildHandler(&fakeUserService{}, &Config{Port: 8000, Origin: "https://test"})
+		testHandler := buildHandler(&fakeUserService{}, &Config{Origin: "https://test"})
 		testHandler.ServeHTTP(w, request)
 		var ok bool
 		switch status := w.Result().StatusCode; status {
@@ -161,27 +162,24 @@ func TestResolveAcceptsOnlyGet(t *testing.T) {
 }
 
 func TestResolveRedirectsToURL(t *testing.T) {
-	path := "/id"
 	tests := []struct {
-		origin   string
-		port     uint
-		expected string
+		origin  string
+		shortID string
+		target  string
 	}{
-		{origin: "http://example.com", port: 80, expected: "http://example.com/id"},
-		{origin: "https://example.com", port: 80, expected: "https://example.com:80/id"},
-		{origin: "https://example.com", port: 443, expected: "https://example.com/id"},
-		{origin: "http://example.com", port: 443, expected: "http://example.com:443/id"},
-		{origin: "http://example.com", port: 10000, expected: "http://example.com:10000/id"},
-		{origin: "https://example.com", port: 10000, expected: "https://example.com:10000/id"},
+		{origin: "http://example.com", shortID: "id", target: "http://other.example.com"},
+		{origin: "https://example.com", shortID: "12345", target: "http://other.example.com"},
+		{origin: "https://example.com:1247", shortID: "alph1num4ric", target: "http://other.example.com"},
+		{origin: "http://example.com:2", shortID: "qw-er-ty", target: "http://other.example.com"},
 	}
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", path, nil)
+		request := httptest.NewRequest("GET", fmt.Sprintf("/%v", test.shortID), nil)
 		w := httptest.NewRecorder()
 		testHandler := buildHandler(&fakeUserService{
 			custom:    true,
-			resultURL: &entities.ShortURL{ShortID: "id"},
+			resultURL: &entities.ShortURL{ShortID: test.shortID, Target: test.target},
 		},
-			&Config{Port: test.port, Origin: test.origin},
+			&Config{Origin: test.origin},
 		)
 
 		testHandler.ServeHTTP(w, request)
@@ -189,8 +187,8 @@ func TestResolveRedirectsToURL(t *testing.T) {
 			t.Fatalf("Unexpected status code %v", status)
 		}
 		actual := w.Header().Get("location")
-		if test.expected != actual {
-			t.Fatalf("Expected %v but got %v", test.expected, actual)
+		if test.target != actual {
+			t.Fatalf("Expected %v but got %v", test.target, actual)
 		}
 	}
 }
