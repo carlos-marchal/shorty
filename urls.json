@@ -1,4 +1,10 @@
 {
-  "URLs": [],
+  "URLs": [
+    {
+      "Target": "https://example.com",
+      "ShortID": "GA",
+      "Expires": "2021-03-19T17:06:35.805714064Z"
+    }
+  ],
   "Serial": 1
 }
