@@ -31,16 +31,25 @@ func Start(urls shorturl.UseCase, config *Config) error {
 	return http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", config.Port), handler)
 }
 
+func sendErrorJSON(w http.ResponseWriter, error string, code int) {
+	body, _ := json.MarshalIndent(struct {
+		Error string `json:"error"`
+	}{error}, "", "  ")
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(code)
+	fmt.Fprintln(w, string(body))
+}
+
 func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/shorten", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			http.Error(w, fmt.Sprintf("method %v not supported", r.Method), http.StatusMethodNotAllowed)
+			sendErrorJSON(w, fmt.Sprintf("method %v not supported", r.Method), http.StatusMethodNotAllowed)
 			return
 		}
 		if r.Header.Get("content-type") != "application/json" {
-			http.Error(w, "body must be a json object with a single url string field", http.StatusBadRequest)
+			sendErrorJSON(w, "body must be a json object with a single url string field", http.StatusBadRequest)
 			return
 		}
 		parsed := new(requestBody)
@@ -48,19 +57,19 @@ func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 		decoder.DisallowUnknownFields()
 		err := decoder.Decode(parsed)
 		if err != nil || parsed.URL == nil || decoder.More() {
-			http.Error(w, "body must be a json object with a single url string field", http.StatusBadRequest)
+			sendErrorJSON(w, "body must be a json object with a single url string field", http.StatusBadRequest)
 			return
 		}
 		log.Printf("%+v\n", parsed)
 		url, err := urls.ShortenURL(*parsed.URL)
 		switch err.(type) {
 		case *entities.ErrInvalidURL:
-			http.Error(w, "URL must be a valid HTTP or HTTPS URL", http.StatusBadRequest)
+			sendErrorJSON(w, "URL must be a valid HTTP or HTTPS URL", http.StatusBadRequest)
 			return
 		case nil:
 			break
 		default:
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			sendErrorJSON(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		response := &responseBody{
@@ -70,7 +79,7 @@ func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 		}
 		responseBody, err := json.MarshalIndent(response, "", "  ")
 		if err != nil {
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			sendErrorJSON(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Add("content-type", "application/json")
@@ -79,17 +88,17 @@ func buildHandler(urls shorturl.UseCase, config *Config) http.Handler {
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
-			http.Error(w, fmt.Sprintf("method %v not supported", r.Method), http.StatusMethodNotAllowed)
+			sendErrorJSON(w, fmt.Sprintf("method %v not supported", r.Method), http.StatusMethodNotAllowed)
 			return
 		}
 		id := r.URL.Path[1:]
 		if id == "" {
-			http.Error(w, "must provide an id to resolve", http.StatusBadRequest)
+			sendErrorJSON(w, "must provide an id to resolve", http.StatusBadRequest)
 			return
 		}
 		url, err := urls.ResolveURL(id)
 		if err != nil {
-			http.Error(w, "url not found", http.StatusNotFound)
+			sendErrorJSON(w, "url not found", http.StatusNotFound)
 			return
 		}
 		shortened := buildURL(config.Origin, config.Port, url.ShortID)
